@@ -84,6 +84,7 @@ pp.updateStats = function() {
         this.sampleVar = this.M2n / (this.count - 1);
     }
     // update bandits sidebar numbers
+    document.getElementById('planet' + this.id + '_count').innerHTML = Math.round(this.count);
     document.getElementById('planet' + this.id + '_mean').innerHTML = Math.round(this.sampleMean);
     document.getElementById('planet' + this.id + '_var').innerHTML = Math.round(this.sampleVar);
 }
@@ -303,6 +304,7 @@ function initializeBanditsSidebar() {
         let newHtml = '<tr>';
         newHtml += '<td>';
         newHtml += '<div id="planet' + p.id +'_planet" class="circle" onmouseover="this.classList.toggle(' + "'gelatine'" +')" onmouseout="this.classList.toggle(' + "'gelatine'" +')"></div>';
+        newHtml += '<td id="planet' + p.id +'_count">' + p.count + '</td>';
         newHtml += '<td id="planet' + p.id +'_mean">' + p.sampleMean + '</td>';
         newHtml += '<td id="planet' + p.id +'_var">' + p.sampleVar + '</td>';
         newHtml += '</tr>';
