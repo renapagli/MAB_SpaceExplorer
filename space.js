@@ -38,6 +38,8 @@ var Planet = function Planet(r, o, a, rot)  {
     this.variance = 0;
     this.sampleMean = 0;
     this.sampleVar = 0;
+    this.M2n = 0; // sum of squares of differences
+    this.count = 0; // Number of times planet has been mined
   }, pp = Planet.prototype;
 
 pp.setXY = function () {
@@ -62,7 +64,28 @@ pp.deactivate = function() {
 
 pp.getReward = function() {
     this.lastReward = Math.round(Math.random()*200);
+    this.updateStats();
     return this.lastReward;
+}
+
+pp.updateStats = function() {
+
+    this.count += 1;
+    if (this.count < 2) {
+        // if only one sample, then mean = sample
+        this.sampleMean = this.lastReward;
+    }
+    else {
+        // use Welford's online algorithm to update sample mean and variance
+        let delta = this.lastReward - this.sampleMean; // (x_n - xbar_n-1)
+        this.sampleMean += delta/this.count; // += (x_n - xbar_n-1) / N
+        let delta2 = this.lastReward - this.sampleMean; // (x_n - xbar_n)
+        this.M2n += delta * delta2;
+        this.sampleVar = this.M2n / (this.count - 1);
+    }
+    // update bandits sidebar numbers
+    document.getElementById('planet' + this.id + '_mean').innerHTML = Math.round(this.sampleMean);
+    document.getElementById('planet' + this.id + '_var').innerHTML = Math.round(this.sampleVar);
 }
 
 pp.draw = function() {
@@ -109,7 +132,7 @@ function bounceAnimation(planet, call) {
        n = 0;
     }
     // draw reward
-    if (planet.id != 0) {
+    if (planet.id != 0 && call < 60) {
         let offset_x = -40;
         let offset_y = 7;
         ctx.fillStyle = '#ebbc09';
@@ -271,6 +294,26 @@ function initializePlanets() {
     }
 }
 
+function initializeBanditsSidebar() {
+
+// for every planet, add to planets Table
+    for (var i=0; i < planets.length; i++) {
+        let p = planets[i];
+        // build html
+        let newHtml = '<tr>';
+        newHtml += '<td>';
+        newHtml += '<div id="planet' + p.id +'_planet" class="circle" onmouseover="this.classList.toggle(' + "'gelatine'" +')" onmouseout="this.classList.toggle(' + "'gelatine'" +')"></div>';
+        newHtml += '<td id="planet' + p.id +'_mean">' + p.sampleMean + '</td>';
+        newHtml += '<td id="planet' + p.id +'_var">' + p.sampleVar + '</td>';
+        newHtml += '</tr>';
+        // append planet to table
+        planetsTable.innerHTML += newHtml;
+        // change color of planet
+        let planet = document.getElementById('planet' + p.id + '_planet');
+        planet.style.background = p.c1;
+        planet.style.boxShadow = '3px -3px 10px 3px ' + p.c2 + ' inset';
+    }
+}
 function initializeAgents() {
     // initialize rocket-ship
     rocket = new Rocket('rocket', 0, 0, Math.PI*3/2, 'rocket-ship.png');
@@ -345,7 +388,8 @@ sun.c2 = '#faa357';
 // initialize planets
 initializePlanets();
 initializeAgents();
-
+// initialize right side bar
+initializeBanditsSidebar();
 // start animation
 ctx.font='30px Verdana';
 
