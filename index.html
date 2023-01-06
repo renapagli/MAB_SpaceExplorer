@@ -16,7 +16,7 @@
             cursor: crosshair;
           }
 
-        #divControl {
+        #rocketDiv {
             position: absolute;
             padding: 10px;
             left: 0px;
@@ -27,7 +27,7 @@
             color: #ffffff;
         }
 
-        #divStats {
+        #ufoDiv {
             position: absolute;
             padding: 10px;
             right: 0px;
@@ -42,30 +42,17 @@
             width: 95%;
         }
 
-
-        .gelatine {
-            animation: gelatine 0.5s infinite;
-        }
-
-        @keyframes gelatine {
-          from, to { transform: scale(1, 1); }
-          25% { transform: scale(0.9, 1.1); }
-          50% { transform: scale(1.1, 0.9); }
-          75% { transform: scale(0.95, 1.05); }
-        }
-
         img {
             float:left;
+            width:35px;
+            height:35px;
+            margin-left:30px;
         }
 
-        #score_rocket h2 {
-            padding-top:12px;
+        h3 {
+            padding-top:0px;
             text-align: right;
-        }
-
-        #score_ufo h2 {
-            padding-top:20px;
-            text-align: right;
+            margin-right:30px;
         }
 
         .circle {
@@ -91,59 +78,72 @@
 
 </head>
 <body>
-<div id="divControl">
-    <h1>Multi-Arm Bandit Visualization</h1>
-<!--    <div>-->
+<!--    <h1>Multi-Arm Bandit Visualization</h1>-->
 <!--        <label for="numAgents">Simulation Speed<br></label>-->
-<!--        <input type="range" id="numAgents" name="numAgents"-->
-<!--               min="1" max="500" value="200" step="10" style="accent-color:grey">-->
-<!--    </div>-->
+    <!--        <input type="range" id="numAgents" name="numAgents"-->
+    <!--               min="1" max="500" value="200" step="10" style="accent-color:grey">-->
+    <!--    </div>-->
+<!--    <div>-->
 
+<!--        <p>Images Credits: </p>-->
+    <!--        <ul>-->
+    <!--            <li><a href="https://www.freeiconspng.com/img/30449">Rocket Ship</a></li>-->
+    <!--            <li><a href="https://www.flaticon.com/free-icons/ufo" title="ufo icons">UFO icon</a></li>-->
+    <!--            <li><a href="https://unsplash.com/@olenkasergienko?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Space Image</a></li>-->
+    <!--        </ul>-->
+    <!--    </div>-->
+<!--    <div>-->
+<div id="rocketDiv">
+    <h2>Agent 1</h2>
     <div id="scores">
         <div id="score_rocket">
-            <img src="rocket-ship.png"><h2 id="score_rocket_display">0 💎</h2>
-            <label for="rocket_strategy">Strategy:</label>
+            <img src="rocket-ship.png" onmouseover="this.classList.toggle('gelatine')" onmouseout="this.classList.toggle('gelatine')"><h3 id="score_rocket_display">0 💎</h3>
+            <label for="rocket_strategy">MAB Strategy:</label>
             <select id="rocket_strategy" name="rocket_strategy">
                 <option value="random">Random</option>
-                <option value="tbd1">TBD1</option>
-                <option value="tbd2">TBD2</option>
-                <option value="tbd3">TBD3</option>
-            </select>
-        </div>
-        <div id="score_ufo">
-            <img src="ufo.png"><h2 id="score_ufo_display">0 💎</h2>
-            <label for="ufo_strategy">Strategy:</label>
-            <select id="ufo_strategy" name="ufo_strategy">
-                <option value="random">Random</option>
-                <option value="tbd1">TBD1</option>
-                <option value="tbd2">TBD2</option>
-                <option value="tbd3">TBD3</option>
+                <option value="ucb">UCB</option>
             </select>
         </div>
     </div>
-    <br>
-    <div>
-        <p>Images Credits: </p>
-        <ul>
-            <li><a href="https://www.freeiconspng.com/img/30449">Rocket Ship</a></li>
-            <li><a href="https://www.flaticon.com/free-icons/ufo" title="ufo icons">UFO icon</a></li>
-            <li><a href="https://unsplash.com/@olenkasergienko?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Space Image</a></li>
-        </ul>
-    </div>
-</div>
-
-<div id="divStats">
-    <h2>Bandits Statistics</h2>
+    <h2>Arms Statistics</h2>
     <table class="table table-borderless" style="text-align:center; border-collapse:separate; top-border-spacing:1em;">
         <thead>
             <tr>
                 <th scope="col" style="width:20%">Planet</th>
                 <th scope="col">N</th>
                 <th scope="col">Mean</th>
-                <th scope="col">Variance</th>
+                <th scope="col">Std. Dev.</th>
             </tr>
         </thead>
-        <tbody id="planetsTable">
+        <tbody id="rocket_planetsTable">
+        <tr><td></td><td></td><td></td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div id="ufoDiv">
+    <h2>Agent 2</h2>
+    <div id="scores">
+        <div id="score_ufo">
+            <img src="ufo.png" onmouseover="this.classList.toggle('gelatine')" onmouseout="this.classList.toggle('gelatine')"><h3 id="score_ufo_display">0 💎</h3>
+            <label for="ufo_strategy">MAB Strategy:</label>
+            <select id="ufo_strategy" name="ufo_strategy">
+                <option value="random">Random</option>
+                <option value="ucb">UCB</option>
+            </select>
+        </div>
+    </div>
+    <h2>Arms Statistics</h2>
+    <table class="table table-borderless" style="text-align:center; border-collapse:separate; top-border-spacing:1em;">
+        <thead>
+            <tr>
+                <th scope="col" style="width:20%">Planet</th>
+                <th scope="col">N</th>
+                <th scope="col">Mean</th>
+                <th scope="col">Std. Dev.</th>
+            </tr>
+        </thead>
+        <tbody id="ufo_planetsTable">
         <tr><td></td><td></td><td></td></tr>
         </tbody>
     </table>

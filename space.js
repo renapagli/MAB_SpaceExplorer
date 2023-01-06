@@ -35,11 +35,7 @@ var Planet = function Planet(r, o, a, rot)  {
     this.setXY();
     this.lastReward = 0;
     this.mean = 0;
-    this.variance = 0;
-    this.sampleMean = 0;
-    this.sampleVar = 0;
-    this.M2n = 0; // sum of squares of differences
-    this.count = 0; // Number of times planet has been mined
+    this.stddev = 0;
   }, pp = Planet.prototype;
 
 pp.setXY = function () {
@@ -63,30 +59,8 @@ pp.deactivate = function() {
 }
 
 pp.getReward = function() {
-    this.lastReward = Math.round(Math.random()*200);
-    this.updateStats();
+    this.lastReward = sampleGaussian(this.mean, this.stddev);
     return this.lastReward;
-}
-
-pp.updateStats = function() {
-
-    this.count += 1;
-    if (this.count < 2) {
-        // if only one sample, then mean = sample
-        this.sampleMean = this.lastReward;
-    }
-    else {
-        // use Welford's online algorithm to update sample mean and variance
-        let delta = this.lastReward - this.sampleMean; // (x_n - xbar_n-1)
-        this.sampleMean += delta/this.count; // += (x_n - xbar_n-1) / N
-        let delta2 = this.lastReward - this.sampleMean; // (x_n - xbar_n)
-        this.M2n += delta * delta2;
-        this.sampleVar = this.M2n / (this.count - 1);
-    }
-    // update bandits sidebar numbers
-    document.getElementById('planet' + this.id + '_count').innerHTML = Math.round(this.count);
-    document.getElementById('planet' + this.id + '_mean').innerHTML = Math.round(this.sampleMean);
-    document.getElementById('planet' + this.id + '_var').innerHTML = Math.round(this.sampleVar);
 }
 
 pp.draw = function() {
@@ -138,7 +112,7 @@ function bounceAnimation(planet, call) {
         let offset_y = 7;
         ctx.fillStyle = '#ebbc09';
         ctx.textAlign = 'left';
-        ctx.fillText('+' + planet.lastReward + ' 💎', cvs.width/2 + planet.x + offset_x + (call + planet.r*2)*Math.cos(planet.a + Math.PI),
+        ctx.fillText('+' + Math.round(planet.lastReward) + ' 💎', cvs.width/2 + planet.x + offset_x + (call + planet.r*2)*Math.cos(planet.a + Math.PI),
         cvs.height/2 + planet.y + offset_y + (call + planet.r*2)*Math.sin(planet.a + Math.PI));
     }
     return ++n;
@@ -166,7 +140,22 @@ var Rocket = function Rocket(name, o, a, w, src) {
     this.bounceN = 0; // keep track of where we are in bounce animation
     this.totalReward = 0;
     this.strategy = document.getElementById(this.name + '_strategy').value; // MAB strategy
+    this.initialized = false;
 },  rp = Rocket.prototype;
+
+rp.setStats = function(planets) {
+    this.sampleMean = {}; // estimated mean from samples
+    this.sampleStdDev = {}; // estimated stddev from samples
+    this.M2n = {}; // sum of squares of differences
+    this.count = {}; // Number of times planet has been mined
+
+    for (const planet of planets) {
+        this.sampleMean[planet.id] = 0;
+        this.sampleStdDev[planet.id] = 0;
+        this.M2n[planet.id] = 0;
+        this.count[planet.id] = 0;
+    }
+}
 
 rp.setXY = function () {
     this.x = this.o * Math.cos(this.a);
@@ -182,6 +171,18 @@ rp.angle2Target = function (target) {
 
     return diffAngle;
 }
+
+rp.initializeArms = function(planets) {
+    if (this.strategy == 'ucb') {
+        for (const planet of planets) {
+            this.addTarget(planet);
+        }
+    }
+    else if (this.strategy == 'random') {
+        this.initialized = true;
+    }
+}
+
 rp.addTarget = function (target) {
     this.targets.push(target);
 //    this.targets.push(sun);
@@ -190,8 +191,20 @@ rp.addTarget = function (target) {
 rp.mineTarget = function (target) {
     if (this.mining) {return;}
     this.mining = true; // set mining status
-    if (target.id != 0) {this.totalReward += target.getReward();} // get reward
-    this.planNextTarget()// add next target based on agent strategy
+    // get reward
+    if (target.id != 0) {
+        this.totalReward += target.getReward(this);
+        this.updateStats(target);
+    }
+
+    // if we are not in initialization phase, then run strategy to determine next target
+    if (this.initialized) {
+        this.planNextTarget()// add next target based on agent strategy
+    }
+    else {
+    // mark agent as initialized if we are at the last arm
+        if (this.strategy != 'random' && sum(this.count) == planets.length-1) {this.initialized = true;}
+    }
 
     target.activate();
     // mine for 3 seconds before moving to next target
@@ -204,7 +217,7 @@ rp.mineTarget = function (target) {
         this.bounceN = 0; // ensures bounceAnimation runs properly
         // increase reward
         if (target.id !=0) {
-            document.getElementById('score_' + this.name + '_display').innerHTML = this.totalReward + ' 💎';
+            document.getElementById('score_' + this.name + '_display').innerHTML = Math.round(this.totalReward) + ' 💎';
         }
     });
 }
@@ -213,6 +226,30 @@ rp.planNextTarget = function() {
     if (this.strategy == 'random'){
         this.addTarget(planets[Math.round(Math.random()*(planets.length-1))])
     }
+    else if (this.strategy == 'ucb'){
+        this.addTarget(strategy_UCB(this, planets));
+    }
+}
+
+rp.updateStats = function(target) {
+    this.count[target.id] = this.count[target.id] + 1;
+    if (this.count[target.id] < 2) {
+        // if only one sample, then mean = sample
+        this.sampleMean[target.id] = target.lastReward;
+        this.sampleStdDev[target.id] = 0;
+    }
+    else {
+        // use Welford's online algorithm to update sample mean and variance
+        let delta = target.lastReward - this.sampleMean[target.id]; // (x_n - xbar_n-1)
+        this.sampleMean[target.id] = this.sampleMean[target.id] + delta/this.count[target.id]; // += (x_n - xbar_n-1) / N
+        let delta2 = target.lastReward - this.sampleMean[target.id]; // (x_n - xbar_n)
+        this.M2n[target.id] = this.M2n[target.id] + delta * delta2;
+        this.sampleStdDev[target.id] = Math.sqrt(this.M2n[target.id] / (this.count[target.id] - 1));
+    }
+    // update bandits sidebar numbers
+    document.getElementById(this.name + '_planet' + target.id + '_count').innerHTML = Math.round(this.count[target.id]);
+    document.getElementById(this.name + '_planet' + target.id + '_mean').innerHTML = Math.round(this.sampleMean[target.id]);
+    document.getElementById(this.name + '_planet' + target.id + '_stddev').innerHTML = Math.round(this.sampleStdDev[target.id]);
 }
 
 rp.move = function () {
@@ -281,55 +318,27 @@ ufo_strategy.addEventListener("change",() => {
     ufo.strategy = ufo_strategy.value;
 })
 
-// initialize functions
+
+// helper functions
+
+function boxMullerTransform() {
+    const u1 = Math.random();
+    const u2 = Math.random();
+
+    const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+    const z1 = Math.sqrt(-2.0 * Math.log(u1)) * Math.sin(2.0 * Math.PI * u2);
+
+    return { z0, z1 };
+}
+
+function sampleGaussian(mean, stddev) {
+    const { z0, _ } = boxMullerTransform();
+
+    return z0 * stddev + mean;
+}
+
 function delay(t, v) {
     return new Promise(resolve => setTimeout(resolve, t, v));
-}
-
-function initializePlanets() {
-    let angle = Math.PI*2/numPlanets;
-    let orbitR = 350;
-    let radius = 30;
-    for (var i=0; i<numPlanets; i++) {
-        planets.push( new Planet(radius, orbitR, angle*i, rotationalSpeed));
-    }
-}
-
-function initializeBanditsSidebar() {
-
-// for every planet, add to planets Table
-    for (var i=0; i < planets.length; i++) {
-        let p = planets[i];
-        // build html
-        let newHtml = '<tr>';
-        newHtml += '<td>';
-        newHtml += '<div id="planet' + p.id +'_planet" class="circle" onmouseover="this.classList.toggle(' + "'gelatine'" +')" onmouseout="this.classList.toggle(' + "'gelatine'" +')"></div>';
-        newHtml += '<td id="planet' + p.id +'_count">' + p.count + '</td>';
-        newHtml += '<td id="planet' + p.id +'_mean">' + p.sampleMean + '</td>';
-        newHtml += '<td id="planet' + p.id +'_var">' + p.sampleVar + '</td>';
-        newHtml += '</tr>';
-        // append planet to table
-        planetsTable.innerHTML += newHtml;
-        // change color of planet
-        let planet = document.getElementById('planet' + p.id + '_planet');
-        planet.style.background = p.c1;
-        planet.style.boxShadow = '3px -3px 10px 3px ' + p.c2 + ' inset';
-    }
-}
-function initializeAgents() {
-    // initialize rocket-ship
-    rocket = new Rocket('rocket', 0, 0, Math.PI*3/2, 'rocket-ship.png');
-    // initialize alien-ship
-    ufo = new Rocket('ufo', 0, 0, 0, 'ufo.png');
-    ufo.width = ufo.height = 64;
-    ufo.rotate = false;
-    // add to agents array
-    agents.push(rocket);
-    agents.push(ufo);
-    // initialize rocket targets
-    rocket.planNextTarget();
-    // initialize ufo targets
-    ufo.planNextTarget();
 }
 
 function generateColor() {
@@ -356,6 +365,65 @@ function drawCorona(r) {
     ctx.fillStyle = gradient;
     ctx.arc(cvs.width/2 + sun.x, cvs.height/2  + sun.y, r, 0, Math.PI*2, true);
     ctx.fill();
+}
+
+
+// initialize functions
+
+function initializePlanets() {
+    let angle = Math.PI*2/numPlanets;
+    let orbitR = 350;
+    let radius = 30;
+    for (var i=0; i<numPlanets; i++) {
+        planets.push( new Planet(radius, orbitR, angle*i, rotationalSpeed));
+        planets[i].mean = i*10;
+        planets[i].stddev = Math.round(planets[i].mean*0.2);
+    }
+}
+
+function initializeArmsSidebar(agent) {
+// for every planet, add to planets Table
+    for (var i=0; i < planets.length; i++) {
+        let p = planets[i];
+        // build html
+        let newHtml = '<tr>';
+        newHtml += '<td>';
+        newHtml += '<div id="' + agent.name + '_planet' + p.id +'_planet" class="circle" onmouseover="this.classList.toggle(' + "'gelatine'" +')" onmouseout="this.classList.toggle(' + "'gelatine'" +')"></div>';
+        newHtml += '<td id="' + agent.name + '_planet' + p.id +'_count">' + agent.count[p.id] + '</td>';
+        newHtml += '<td id="' + agent.name + '_planet' + p.id +'_mean">' + agent.sampleMean[p.id] + '</td>';
+        newHtml += '<td id="' + agent.name + '_planet' + p.id +'_stddev">' + agent.sampleStdDev[p.id] + '</td>';
+        newHtml += '</tr>';
+        // append planet to table
+        document.getElementById(agent.name + '_planetsTable').innerHTML += newHtml;
+        // change color of planet
+        let planet = document.getElementById(agent.name + '_planet' + p.id + '_planet');
+        planet.style.background = p.c1;
+        planet.style.boxShadow = '3px -3px 10px 3px ' + p.c2 + ' inset';
+    }
+}
+
+function initializeAgents() {
+    // initialize rocket-ship
+    rocket = new Rocket('rocket', 0, 0, Math.PI*3/2, 'rocket-ship.png');
+    rocket.setStats(planets);
+    // set initial strategy to UCB
+    rocket_strategy.value = 'ucb';
+    rocket.strategy = rocket_strategy.value;
+    // initialize alien-ship
+    ufo = new Rocket('ufo', 0, 0, 0, 'ufo.png');
+    ufo.width = ufo.height = 64;
+    ufo.rotate = false;
+    ufo.setStats(planets);
+    // add to agents array
+    agents.push(rocket);
+    agents.push(ufo);
+    // initialize rocket targets
+    rocket.initializeArms(planets);
+    // initialize ufo targets
+    ufo.initializeArms(planets);
+    // initialize right side bar
+    initializeArmsSidebar(rocket);
+    initializeArmsSidebar(ufo);
 }
 
 function render() {
@@ -390,10 +458,8 @@ sun.c2 = '#faa357';
 // initialize planets
 initializePlanets();
 initializeAgents();
-// initialize right side bar
-initializeBanditsSidebar();
 // start animation
-ctx.font='30px Verdana';
+ctx.font='20px Verdana';
 
 render();
 
