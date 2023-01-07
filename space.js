@@ -20,6 +20,7 @@ rotationalSpeed = 0.001;
 rocketSpeed = 0.09;
 miningDelay = 1000;
 planetID = 0;
+const strategies = {};
 
 // planet object
 var Planet = function Planet(r, o, a, rot)  {
@@ -162,6 +163,11 @@ rp.setXY = function () {
     this.y = this.o * Math.sin(this.a);
 }
 
+rp.setStrategy = function (strategy) {
+    document.getElementById(this.name + '_strategy').value = strategy;
+    this.strategy = strategy;
+}
+
 rp.angle2Target = function (target) {
     let x = target.x - this.x;
     let y = target.y - this.y;
@@ -173,14 +179,17 @@ rp.angle2Target = function (target) {
 }
 
 rp.initializeArms = function(planets) {
-    if (this.strategy == 'ucb') {
         for (const planet of planets) {
             this.addTarget(planet);
         }
-    }
-    else if (this.strategy == 'random') {
-        this.initialized = true;
-    }
+//    if (this.strategy == 'ucb') {
+//        for (const planet of planets) {
+//            this.addTarget(planet);
+//        }
+//    }
+//    else if (this.strategy == 'random') {
+//        this.initialized = true;
+//    }
 }
 
 rp.addTarget = function (target) {
@@ -203,7 +212,7 @@ rp.mineTarget = function (target) {
     }
     else {
     // mark agent as initialized if we are at the last arm
-        if (this.strategy != 'random' && sum(this.count) == planets.length-1) {this.initialized = true;}
+        if (sum(this.count) == planets.length-1) {this.initialized = true;}
     }
 
     target.activate();
@@ -223,12 +232,7 @@ rp.mineTarget = function (target) {
 }
 
 rp.planNextTarget = function() {
-    if (this.strategy == 'random'){
-        this.addTarget(planets[Math.round(Math.random()*(planets.length-1))])
-    }
-    else if (this.strategy == 'ucb'){
-        this.addTarget(strategy_UCB(this, planets));
-    }
+    this.addTarget(strategies[this.strategy](this, planets));
 }
 
 rp.updateStats = function(target) {
@@ -376,8 +380,8 @@ function initializePlanets() {
     let radius = 30;
     for (var i=0; i<numPlanets; i++) {
         planets.push( new Planet(radius, orbitR, angle*i, rotationalSpeed));
-        planets[i].mean = i*10;
-        planets[i].stddev = Math.round(planets[i].mean*0.2);
+        planets[i].mean = Math.round(Math.random()*100);
+        planets[i].stddev = Math.round(Math.random()*20);
     }
 }
 
@@ -407,13 +411,14 @@ function initializeAgents() {
     rocket = new Rocket('rocket', 0, 0, Math.PI*3/2, 'rocket-ship.png');
     rocket.setStats(planets);
     // set initial strategy to UCB
-    rocket_strategy.value = 'ucb';
-    rocket.strategy = rocket_strategy.value;
+    rocket.setStrategy('ucb');
     // initialize alien-ship
     ufo = new Rocket('ufo', 0, 0, 0, 'ufo.png');
     ufo.width = ufo.height = 64;
     ufo.rotate = false;
     ufo.setStats(planets);
+    // set initial strategy to epsilon greedy (0.5)
+    ufo.setStrategy('epsilonGreedy5');
     // add to agents array
     agents.push(rocket);
     agents.push(ufo);
