@@ -1,10 +1,11 @@
 // Add MAB policy definitions here
 policy_options = {};
-policy_options['Random'] = 'random';
-policy_options['epsGreedy0.1'] = 'epsilonGreedy1';
-policy_options['epsGreedy0.5'] = 'epsilonGreedy5';
-policy_options['UCB1'] = 'ucb1';
-policy_options['UCB_Bayesian'] = 'ucbBayesian';
+policy_options['Random'] = 'random'; // Completely Random Policy
+policy_options['epsGreedy0.1'] = 'epsilonGreedy1'; // Epsilon-Greedy with epsilon = 0.1
+policy_options['epsGreedy0.5'] = 'epsilonGreedy5'; // Epsilon-Greedy with epsilon = 0.5
+policy_options['UCB1'] = 'ucb1'; // Upper Confidence Bound Algorithm using Hoeffding's inequality
+policy_options['UCB_Bayesian'] = 'ucbBayesian'; // Bayesian Upper Confidence Bound Algorithm
+policy_options['EXP3'] = 'exp3'; // Exponential-weight algorithm for Exploration and Exploitation
 
 // Add MAB policy functions here
 //
@@ -51,8 +52,7 @@ policies['ucb1'] = function (agent, arms) {
     // return arm with largest Q
     return arms[indexOfMax(Q)]
 }
-
-// UCB POLICY
+// BAYESIAN UCB POLICY
 policies['ucbBayesian'] = function (agent, arms) {
     // Balance explore-exploit tradeoff by increasing
     // exploration term over time
@@ -78,13 +78,69 @@ policies['ucbBayesian'] = function (agent, arms) {
     // return arm with largest Q
     return arms[indexOfMax(Q)]
 }
+// EXP3
+policies['exp3'] = (agent, arms) => exp3(agent, arms, exp3_weights[agent.name]);
+
+function exp3(agent, arms, weights) {
+    // Probabilistic explorations based on learned arms weights and hyperparameter gamma
+    // Initialize weights to 1 for all arms
+    // Set probability of choosing arm as p_i = (1 - gamma) * w_i / sum(w) + gamma / num_arms
+    // Choose next arm with probability p_i
+    // Get reward r_j from chosen arm j
+    // Update weight of chosen arm w_j = w_j * exp( gamma * (r_j / p_j) / num_arms )
+
+    let gamma = 0.5; // hyperparameter
+    let p = new Array(arms.length); // probabilities
+
+    // set probabilities
+    for (var i = 0; i < arms.length; i++) {
+        p[i] = (1 - gamma) * weights[i] / sumArr(weights) + gamma / arms.length;
+    }
+    // select arm at random
+    r = Math.random();
+    arm_index = pickAtRandom(p,r);
+
+    // updating weights is done via updateExp3Weights function after reward is obtained from chosen arm
+
+    // return arm with largest Q
+    return arms[arm_index]
+}
+
+function updateExp3Weights(agentName, armsLength, armId, armReward) {
+    let weights = exp3_weights[agent.name];
+    armIndex = planets.findIndex((e) => {e.id == armId});
+    let gamma = 0.5;
+    // get probability
+    p_j = (1 - gamma) * weights[index] / sumArr(weights) + gamma / armsLength;
+    // update weight
+    weights[armIndex] = weights[armIndex] * Math.exp(gamma * (armReward / p_j) / armsLength);
+    exp3_weights[agentName] = weights;
+}
 
 
 // helper functions
+//
+//
+function pickAtRandom(p,r) {
+    let sum = 0;
+    for (var i=0; i < p.length; i++) {
+        sum += p[i];
+        if (r < sum) {return i;}
+    }
+}
+
 function sum(dict) {
     var res = 0;
     for (const [key, value] of Object.entries(dict)) {
         res += value;
+    }
+    return res;
+}
+
+function sumArr(arr) {
+    var res = 0;
+    for (var i = 0; i < arr.length; i++) {
+        res += arr[i];
     }
     return res;
 }

@@ -178,17 +178,15 @@ rp.angle2Target = function (target) {
 }
 
 rp.initializeArms = function(planets) {
+    for (const planet of planets) {
+        this.addTarget(planet);
+    }
+    // if Bayesian UBC, do a second round to get variance estimates
+    if (this.policy == 'ucbBayesian') {
         for (const planet of planets) {
             this.addTarget(planet);
         }
-//    if (this.policy == 'ucb1') {
-//        for (const planet of planets) {
-//            this.addTarget(planet);
-//        }
-//    }
-//    else if (this.policy == 'random') {
-//        this.initialized = true;
-//    }
+    }
 }
 
 rp.addTarget = function (target) {
@@ -203,6 +201,8 @@ rp.mineTarget = function (target) {
     if (target.id != 0) {
         this.totalReward += target.getReward(this);
         this.updateStats(target);
+        // if strategy EXP3, then update weights
+        if (this.strategy == 'EXP3') {updateExp3Weights(this.name, planets.length, target.id, target.lastReward);}
     }
 
     // if we are not in initialization phase, then run policy to determine next target
@@ -373,15 +373,18 @@ function drawCorona(r) {
 
 // initialize functions
 function initializePolicyOptions() {
+    // weights for EXP3 policy
+    exp3_weights = {};
     // for every agent
     for (var a=0; a < agents.length; a++) {
-        console.log(agents[a].name)
         selectDOM = document.getElementById(agents[a].name + '_policy');
         // for every policy
         for (const [key, value] of Object.entries(policy_options)) {
             // add policy to options
             selectDOM.add(new Option(key,value));
         }
+        // initialize weights for EXP3 policy
+        exp3_weights[agents[a].name] = new Array(planets.length).fill(1); // {rocket : [1,1,1...]; ufo : [1,1,1...]}
     }
 }
 
@@ -432,12 +435,11 @@ function initializeAgents() {
     // initialize policy options
     initializePolicyOptions();
     // set initial rocket policy to UCB
-    rocket.setPolicy('ucb1');
+    rocket.setPolicy('ucbBayesian');
     // set initial ufo policy to epsilon greedy (0.5)
-    ufo.setPolicy('epsilonGreedy5');
-    // initialize rocket targets
+    ufo.setPolicy('epsilonGreedy1');
+    // initialize targets
     rocket.initializeArms(planets);
-    // initialize ufo targets
     ufo.initializeArms(planets);
     // initialize right side bar
     initializeArmsSidebar(rocket);
