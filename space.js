@@ -392,11 +392,13 @@ function initializePlanets() {
     let angle = Math.PI*2/numPlanets;
     let orbitR = 350;
     let radius = 30;
+    console.log('Planets initialized: ')
     for (var i=0; i<numPlanets; i++) {
         planets.push( new Planet(radius, orbitR, angle*i, rotationalSpeed));
         planets[i].mean = Math.round(Math.random()*100);
         planets[i].stddev = Math.round(Math.random()*20);
     }
+    console.table(planets,['id','mean','stddev'])
 }
 
 function initializeArmsSidebar(agent) {
@@ -406,7 +408,7 @@ function initializeArmsSidebar(agent) {
         // build html
         let newHtml = '<tr>';
         newHtml += '<td>';
-        newHtml += '<div id="' + agent.name + '_planet' + p.id +'_planet" class="circle" onmouseover="this.classList.toggle(' + "'gelatine'" +')" onmouseout="this.classList.toggle(' + "'gelatine'" +')"></div>';
+        newHtml += '<div id="' + agent.name + '_planet' + p.id +'_planet" class="circle" onmouseover="this.classList.toggle(' + "'gelatine'" +')" onmouseout="this.classList.toggle(' + "'gelatine'" +')">' + p.id + '</div>';
         newHtml += '<td id="' + agent.name + '_planet' + p.id +'_count">' + agent.count[p.id] + '</td>';
         newHtml += '<td id="' + agent.name + '_planet' + p.id +'_mean">' + agent.sampleMean[p.id] + '</td>';
         newHtml += '<td id="' + agent.name + '_planet' + p.id +'_stddev">' + agent.sampleStdDev[p.id] + '</td>';
