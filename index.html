@@ -98,12 +98,8 @@
     <div id="scores">
         <div id="score_rocket">
             <img src="rocket-ship.png" onmouseover="this.classList.toggle('gelatine')" onmouseout="this.classList.toggle('gelatine')"><h3 id="score_rocket_display">0 💎</h3>
-            <label for="rocket_strategy">MAB Strategy:</label>
-            <select id="rocket_strategy" name="rocket_strategy">
-                <option value="random">Random</option>
-                <option value="epsilonGreedy1">EpsGreedy_0.1</option>
-                <option value="epsilonGreedy5">EpsGreedy_0.5</option>
-                <option value="ucb">UCB</option>
+            <label for="rocket_policy">MAB Policy:</label>
+            <select id="rocket_policy" name="rocket_policy">
             </select>
         </div>
     </div>
@@ -128,12 +124,8 @@
     <div id="scores">
         <div id="score_ufo">
             <img src="ufo.png" onmouseover="this.classList.toggle('gelatine')" onmouseout="this.classList.toggle('gelatine')"><h3 id="score_ufo_display">0 💎</h3>
-            <label for="ufo_strategy">MAB Strategy:</label>
-            <select id="ufo_strategy" name="ufo_strategy">
-                <option value="random">Random</option>
-                <option value="epsilonGreedy1">EpsGreedy_0.1</option>
-                <option value="epsilonGreedy5">EpsGreedy_0.5</option>
-                <option value="ucb">UCB</option>
+            <label for="ufo_policy">MAB Policy:</label>
+            <select id="ufo_policy" name="ufo_policy">
             </select>
         </div>
     </div>
@@ -154,8 +146,8 @@
 </div>
 
 <canvas id="spaceCanvas"></canvas>
-<script src="space.js"></script>
 <script src="mab.js"></script>
+<script src="space.js"></script>
 
 </body>
 </html>

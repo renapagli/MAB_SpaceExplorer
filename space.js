@@ -5,7 +5,7 @@
 //      Display measured mean and var somewhere (within planet? right sidebar?)
 //      Graph regret?
 // 2) Implement MAB algorithms
-//      Create strategies and connect them to select DOM values
+//      Create policies and connect them to select DOM values
 
 cvs = document.getElementById('spaceCanvas');
 cvs.width = innerWidth;
@@ -20,7 +20,6 @@ rotationalSpeed = 0.001;
 rocketSpeed = 0.09;
 miningDelay = 1000;
 planetID = 0;
-const strategies = {};
 
 // planet object
 var Planet = function Planet(r, o, a, rot)  {
@@ -140,7 +139,7 @@ var Rocket = function Rocket(name, o, a, w, src) {
     this.rotate = true;
     this.bounceN = 0; // keep track of where we are in bounce animation
     this.totalReward = 0;
-    this.strategy = document.getElementById(this.name + '_strategy').value; // MAB strategy
+    this.policy = document.getElementById(this.name + '_policy').value; // MAB policy
     this.initialized = false;
 },  rp = Rocket.prototype;
 
@@ -163,9 +162,9 @@ rp.setXY = function () {
     this.y = this.o * Math.sin(this.a);
 }
 
-rp.setStrategy = function (strategy) {
-    document.getElementById(this.name + '_strategy').value = strategy;
-    this.strategy = strategy;
+rp.setPolicy = function (policy) {
+    document.getElementById(this.name + '_policy').value = policy;
+    this.policy = policy;
 }
 
 rp.angle2Target = function (target) {
@@ -182,12 +181,12 @@ rp.initializeArms = function(planets) {
         for (const planet of planets) {
             this.addTarget(planet);
         }
-//    if (this.strategy == 'ucb') {
+//    if (this.policy == 'ucb1') {
 //        for (const planet of planets) {
 //            this.addTarget(planet);
 //        }
 //    }
-//    else if (this.strategy == 'random') {
+//    else if (this.policy == 'random') {
 //        this.initialized = true;
 //    }
 }
@@ -206,9 +205,9 @@ rp.mineTarget = function (target) {
         this.updateStats(target);
     }
 
-    // if we are not in initialization phase, then run strategy to determine next target
+    // if we are not in initialization phase, then run policy to determine next target
     if (this.initialized) {
-        this.planNextTarget()// add next target based on agent strategy
+        this.planNextTarget()// add next target based on agent policy
     }
     else {
     // mark agent as initialized if we are at the last arm
@@ -232,7 +231,7 @@ rp.mineTarget = function (target) {
 }
 
 rp.planNextTarget = function() {
-    this.addTarget(strategies[this.strategy](this, planets));
+    this.addTarget(policies[this.policy](this, planets));
 }
 
 rp.updateStats = function(target) {
@@ -315,11 +314,11 @@ rp.draw = function () {
 
 
 // Event listeners
-rocket_strategy.addEventListener("change", () => {
-    rocket.strategy = rocket_strategy.value;
+rocket_policy.addEventListener("change", () => {
+    rocket.policy = rocket_policy.value;
 })
-ufo_strategy.addEventListener("change",() => {
-    ufo.strategy = ufo_strategy.value;
+ufo_policy.addEventListener("change",() => {
+    ufo.policy = ufo_policy.value;
 })
 
 
@@ -373,6 +372,18 @@ function drawCorona(r) {
 
 
 // initialize functions
+function initializePolicyOptions() {
+    // for every agent
+    for (var a=0; a < agents.length; a++) {
+        console.log(agents[a].name)
+        selectDOM = document.getElementById(agents[a].name + '_policy');
+        // for every policy
+        for (const [key, value] of Object.entries(policy_options)) {
+            // add policy to options
+            selectDOM.add(new Option(key,value));
+        }
+    }
+}
 
 function initializePlanets() {
     let angle = Math.PI*2/numPlanets;
@@ -410,18 +421,20 @@ function initializeAgents() {
     // initialize rocket-ship
     rocket = new Rocket('rocket', 0, 0, Math.PI*3/2, 'rocket-ship.png');
     rocket.setStats(planets);
-    // set initial strategy to UCB
-    rocket.setStrategy('ucb');
     // initialize alien-ship
     ufo = new Rocket('ufo', 0, 0, 0, 'ufo.png');
     ufo.width = ufo.height = 64;
     ufo.rotate = false;
     ufo.setStats(planets);
-    // set initial strategy to epsilon greedy (0.5)
-    ufo.setStrategy('epsilonGreedy5');
     // add to agents array
-    agents.push(rocket);
     agents.push(ufo);
+    agents.push(rocket);
+    // initialize policy options
+    initializePolicyOptions();
+    // set initial rocket policy to UCB
+    rocket.setPolicy('ucb1');
+    // set initial ufo policy to epsilon greedy (0.5)
+    ufo.setPolicy('epsilonGreedy5');
     // initialize rocket targets
     rocket.initializeArms(planets);
     // initialize ufo targets
@@ -462,6 +475,7 @@ sun.c1 = '#f0b521';
 sun.c2 = '#faa357';
 // initialize planets
 initializePlanets();
+// initialize Agents
 initializeAgents();
 // start animation
 ctx.font='20px Verdana';

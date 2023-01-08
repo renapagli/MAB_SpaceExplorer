@@ -1,16 +1,40 @@
-// Add new MAB strategy definitions here
+// Add MAB policy definitions here
+policy_options = {};
+policy_options['Random'] = 'random';
+policy_options['epsGreedy0.1'] = 'epsilonGreedy1';
+policy_options['epsGreedy0.5'] = 'epsilonGreedy5';
+policy_options['UCB1'] = 'ucb1';
+policy_options['UCB_Bayesian'] = 'ucbBayesian';
+
+// Add MAB policy functions here
+//
+//
+const policies = {};
 
 // RANDOM STRATEGY
-strategies['random'] = function (agent, arms) {
+policies['random'] = function (agent, arms) {
     // Select an arm at random
     return arms[Math.round(Math.random()*(arms.length-1))]
 }
+// EPSILON GREEDY POLICY
+policies['epsilonGreedy1'] = (agent, arms) => epsilonGreedy(agent, arms, 0.1);
+policies['epsilonGreedy5'] = (agent, arms) => epsilonGreedy(agent, arms, 0.5);
 
-// UCB STRATEGY
-strategies['ucb'] = function (agent, arms) {
+function epsilonGreedy(agent, arms, eps) {
+    // Select arm at random with probability eps
+    // Otherwise, select arm with highest sample mean
+    if (Math.random() < eps) {
+        return policies['random'](agent, arms);
+    }
+    else {
+        return arms.filter((e) => e.id == idOfMax(agent.sampleMean))[0]
+    }
+}
+// UCB POLICY
+policies['ucb1'] = function (agent, arms) {
     // Balance explore-exploit tradeoff by increasing
     // exploration term over time
-    // Explore term: C_i
+    // Explore term: C_i = sqrt( 2 * ln(t) / N_i)
     // Exploit term: mu_i (sample mean of arm)
     // At time t, select arm with highest Q = mu_i + C_i
     // initialize array of Q values
@@ -28,20 +52,33 @@ strategies['ucb'] = function (agent, arms) {
     return arms[indexOfMax(Q)]
 }
 
-// EPSILON GREEDY STRATEGY
-strategies['epsilonGreedy1'] = (agent, arms) => epsilonGreedy(agent, arms, 0.1);
-strategies['epsilonGreedy5'] = (agent, arms) => epsilonGreedy(agent, arms, 0.5);
+// UCB POLICY
+policies['ucbBayesian'] = function (agent, arms) {
+    // Balance explore-exploit tradeoff by increasing
+    // exploration term over time
+    // Explore term now incorporates information about Gaussian distribution of rewards
+    // Explore term: C_i = c * sample_stddev_i / sqrt(N_i), where
+    // c is the number of std deviations away from the mean, so setting c = 1.96 gives
+    // a 95% confidence interval
+    // Exploit term: mu_i (sample mean of arm)
+    // At time t, select arm with highest Q = mu_i + C_i
 
-function epsilonGreedy(agent, arms, eps) {
-    // Select arm at random with probability eps
-    // Otherwise, select arm with highest sample mean
-    if (Math.random() < eps) {
-        return strategies['random'](agent, arms);
+    let c = 1.96 // constant for 95% confidence interval
+    // initialize array of Q values
+    let Q = new Array(arms.length);
+    // get t-1 from number of arms visited by agent
+    let t = sum(agent.count);
+    // compute Qi for each arm
+    for (var i = 0; i < arms.length; i++) {
+        let mu_i = agent.sampleMean[arms[i].id] / 100; // scale to [0, 1] range
+        let n_i = agent.count[arms[i].id];
+        let C_i = c * agent.sampleStdDev[arms[i].id] / Math.sqrt( n_i );
+        Q[i] = mu_i + C_i;
     }
-    else {
-        return arms.filter((e) => e.id == idOfMax(agent.sampleMean))[0]
-    }
+    // return arm with largest Q
+    return arms[indexOfMax(Q)]
 }
+
 
 // helper functions
 function sum(dict) {
